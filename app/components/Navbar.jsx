@@ -2,19 +2,26 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { motion } from 'framer-motion';
 
 export default function Navbar() {
   const pathname = usePathname();
-  const [hash, setHash] = useState('');
+  const [activeUrl, setActiveUrl] = useState('/');
 
   useEffect(() => {
-    setHash(window.location.hash);
-    const handleHashChange = () => setHash(window.location.hash);
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      setActiveUrl(pathname + hash);
+
+      const handleLocationChange = () => {
+        setActiveUrl(window.location.pathname + window.location.hash);
+      };
+
+      window.addEventListener('hashchange', handleLocationChange);
+      return () => window.removeEventListener('hashchange', handleLocationChange);
+    }
   }, [pathname]);
 
-  // If we're on the dashboard, don't show the main landing page navbar
   if (pathname && pathname.startsWith('/dashboard')) {
     return null;
   }
@@ -26,101 +33,98 @@ export default function Navbar() {
     { name: 'Pricing', href: '/pricing' }
   ];
 
+  // Helper function to check if a link should be active
+  const checkIsActive = (href) => {
+    // Exact match immediately handles immediate clicks and hash links
+    if (activeUrl === href) return true;
+    
+    // Fallback: If we just don't have hash but path matches (mostly for '/' base path)
+    const exactPath = href.split('#')[0] || '/';
+    const linkHash = href.includes('#') ? '#' + href.split('#')[1] : '';
+
+    if (!activeUrl.includes('#') && activeUrl === exactPath && !linkHash) {
+      return true;
+    }
+
+    return false;
+  };
+
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', position: 'fixed', top: '0', left: 0, right: 0, zIndex: 1000, pointerEvents: 'none', padding: '12px' }}>
-      <nav style={{
-        display: 'flex',
-        alignItems: 'center',
-        background: 'rgba(255, 255, 255, 0.7)',
-        padding: '6px 6px',
-        borderRadius: '40px',
-        backdropFilter: 'blur(16px)',
-        boxShadow: 'var(--shadow-md)',
-        border: '1px solid var(--border)',
-        pointerEvents: 'auto',
-        justifyContent: 'space-between',
-        width: '50%',
-        maxWidth: '100%'
-      }}>
+    <div className="fixed top-0 left-0 right-0 z-[1000] flex justify-center p-3 pointer-events-none">
+      <nav className="flex items-center justify-between w-[50%] max-w-[100%] bg-[rgba(255,255,255,0.7)] p-1.5 rounded-[40px] backdrop-blur-[16px] shadow-md border border-[var(--border)] pointer-events-auto max-lg:w-[80%] max-sm:w-[95%]">
         {/* LOGO */}
-        <Link href="/" style={{ padding: '0 16px', display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
+        <Link 
+          href="/" 
+          onClick={() => setActiveUrl('/')}
+          className="px-4 flex items-center gap-2 no-underline group"
+        >
+          <div className="flex items-center group-hover:scale-105 transition-transform duration-300">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <rect x="2" y="2" width="8" height="8" fill="#E8612A" rx="1"/>
               <rect x="10" y="10" width="8" height="8" fill="#E8612A" rx="1"/>
               <rect x="2" y="10" width="8" height="8" fill="#E8612A" rx="1" opacity="0.3"/>
             </svg>
           </div>
-          <span style={{ 
-            fontSize: '20px', 
-            fontWeight: '800', 
-            letterSpacing: '-0.5px',
-            fontFamily: 'Inter, sans-serif'
-          }}>
-            <span style={{ color: 'var(--text-primary)' }}>Pixel</span>
-            <span style={{ color: '#E8612A' }}>Twin</span>
+          <span className="text-[20px] font-extrabold tracking-[-0.5px] font-['Inter',sans-serif]">
+            <span className="text-[var(--text-primary)]">Pixel</span>
+            <span className="text-[#E8612A]">Twin</span>
           </span>
         </Link>
 
         {/* PILL LINKS */}
-        <div style={{ display: 'flex', gap: '4px', background: 'transparent' }}>
+        <div className="flex gap-1 relative bg-transparent max-md:hidden">
           {links.map((link) => {
-            const exactPath = link.href.split('#')[0] || '/';
-            const linkHash = link.href.includes('#') ? '#' + link.href.split('#')[1] : '';
-
-            let isActive = false;
-            if (hash) {
-              isActive = (linkHash === hash && pathname === exactPath);
-            } else {
-              isActive = (pathname === exactPath && !linkHash);
-            }
+            const isActive = checkIsActive(link.href);
 
             return (
-              <Link key={link.name} href={link.href} onClick={() => setHash(linkHash)} style={{
-                padding: '10px 24px',
-                borderRadius: '30px',
-                textDecoration: 'none',
-                fontSize: '15px',
-                fontWeight: isActive ? 600 : 500,
-                color: isActive ? '#ffffff' : 'var(--text-secondary)',
-                background: isActive ? 'linear-gradient(90deg, var(--accent), var(--accent-hover))' : 'transparent',
-                boxShadow: isActive ? 'var(--shadow-md)' : 'none',
-                transition: 'all 0.2s ease',
-              }}>
-                {link.name}
+              <Link
+                key={link.name}
+                href={link.href}
+                onClick={() => setActiveUrl(link.href)}
+                className={`relative px-6 py-2.5 rounded-[30px] text-[15px] transition-colors duration-300 ease-in-out font-medium z-10 ${
+                  isActive ? 'text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="active-nav-pill"
+                    className="absolute inset-0 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] rounded-[30px] shadow-sm -z-10"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">{link.name}</span>
               </Link>
             );
           })}
         </div>
 
         {/* ACTIONS */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', paddingRight: '4px' }}>
-          <Link href="/login" style={{
-            padding: '10px 24px',
-            borderRadius: '30px',
-            textDecoration: 'none',
-            fontSize: '15px',
-            fontWeight: pathname === '/login' ? 600 : 500,
-            color: pathname === '/login' ? '#ffffff' : 'var(--text-secondary)',
-            background: pathname === '/login' ? 'linear-gradient(90deg, var(--accent), var(--accent-hover))' : 'transparent',
-            boxShadow: pathname === '/login' ? 'var(--shadow-md)' : 'none',
-            transition: 'all 0.2s ease'
-          }}>
-            Log in
-          </Link>
-          <Link href="/signup" style={{
-            padding: '10px 24px',
-            borderRadius: '30px',
-            textDecoration: 'none',
-            fontSize: '15px',
-            fontWeight: pathname === '/signup' ? 600 : 500,
-            color: pathname === '/signup' ? '#ffffff' : 'var(--text-secondary)',
-            background: pathname === '/signup' ? 'linear-gradient(90deg, var(--accent), var(--accent-hover))' : 'transparent',
-            boxShadow: pathname === '/signup' ? 'var(--shadow-md)' : 'none',
-            transition: 'all 0.2s ease'
-          }}>
-            Sign up
-          </Link>
+        <div className="flex items-center gap-1 pr-1">
+          {['/login', '/signup'].map((path) => {
+            const name = path === '/login' ? 'Log in' : 'Sign up';
+            const isActive = checkIsActive(path);
+            const isSignup = path === '/signup';
+            
+            return (
+              <Link
+                key={path}
+                href={path}
+                onClick={() => setActiveUrl(path)}
+                className={`relative px-6 py-2.5 rounded-[30px] text-[15px] transition-colors duration-300 ease-in-out font-medium z-10 ${
+                  isActive ? 'text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                } ${isSignup && !isActive ? 'bg-[var(--bg-hover)]' : ''}`}
+              >
+                {isActive && (
+                   <motion.div
+                     layoutId="active-nav-pill"
+                     className="absolute inset-0 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] rounded-[30px] shadow-sm -z-10"
+                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                   />
+                )}
+                <span className="relative z-10">{name}</span>
+              </Link>
+            )
+          })}
         </div>
       </nav>
     </div>
